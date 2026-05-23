@@ -8,13 +8,29 @@
     <style>
         html{
             height: -webkit-fill-available;
+            width: 100%;
+            overflow: hidden;
         }
         body {
             margin: 0;
             padding: 0;
-            min-height: 100vh;
-            min-height: -webkit-fill-available;
-            width: 100vw;
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: var(--app-height, 100vh);
+            overflow: hidden;
+            overscroll-behavior: none;
+            touch-action: none;
+        }
+        #unity-container,
+        #unity-canvas,
+        #video-canvas {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: var(--app-height, 100vh);
             overflow: hidden;
         }
         .ctaDiv {
@@ -102,11 +118,43 @@
             initialize();
             var container = document.querySelector("#unity-container");
             var canvas = document.querySelector("#unity-canvas");
+            var videoCanvases = document.querySelectorAll("#video-canvas");
             var loadingBar = document.querySelector("#unity-loading-bar");
             var progressBarFull = document.querySelector("#unity-progress-bar-full");
+            function GetViewportHeight() {
+                return Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight);
+            }
+            function ApplyViewportSize() {
+                var width = Math.round((window.visualViewport && window.visualViewport.width) || window.innerWidth || document.documentElement.clientWidth);
+                var height = GetViewportHeight();
+                document.documentElement.style.setProperty("--app-height", height + "px");
+                document.body.style.width = width + "px";
+                document.body.style.height = height + "px";
+                container.style.width = width + "px";
+                container.style.height = height + "px";
+                canvas.style.width = width + "px";
+                canvas.style.height = height + "px";
+                videoCanvases.forEach((videoCanvas) => {
+                    videoCanvas.style.width = width + "px";
+                    videoCanvas.style.height = height + "px";
+                });
+                window.scrollTo(0, 0);
+            }
+            function ScheduleViewportRefresh() {
+                ApplyViewportSize();
+                requestAnimationFrame(ApplyViewportSize);
+                setTimeout(ApplyViewportSize, 100);
+                setTimeout(ApplyViewportSize, 500);
+            }
+            window.addEventListener("resize", ScheduleViewportRefresh);
+            window.addEventListener("orientationchange", ScheduleViewportRefresh);
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener("resize", ScheduleViewportRefresh);
+                window.visualViewport.addEventListener("scroll", ScheduleViewportRefresh);
+            }
+            ScheduleViewportRefresh();
             function StartAR() {
-                canvas.style.width = window.innerWidth + "px";
-                canvas.style.height = window.innerHeight + "px";
+                ScheduleViewportRefresh();
                 
                 document.getElementById("startARDiv").style.display = "none";
                 createUnityInstance(document.querySelector("#unity-canvas"), {
@@ -126,6 +174,8 @@
                     }
                 ).then((unityInstance) => {
                     window.unityInstance = unityInstance;
+                    ScheduleViewportRefresh();
+                    setTimeout(() => window.dispatchEvent(new Event("resize")), 50);
                     RequestWebcam();
                     loadingBar.style.display = "none";
                 });
