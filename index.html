@@ -53,6 +53,8 @@
 		<imagetarget id='01' src='targets/01.jpg'></imagetarget>
 		<imagetarget id='03' src='targets/03.jpg'></imagetarget>
 		<imagetarget id='05' src='targets/05.png'></imagetarget>
+		<imagetarget id='07' src='targets/07.png'></imagetarget>
+		<imagetarget id='08' src='targets/08.png'></imagetarget>
 		<imagetarget id='04' src='targets/04.png'></imagetarget>
 		<imagetarget id='TEDI' src='targets/TEDI.png'></imagetarget>
 		<imagetarget id='TEDI3' src='targets/TEDI3.png'></imagetarget>
@@ -113,7 +115,12 @@
                 }
                 
                 iTracker.WEBCAM_NAME = "Default Camera";
-                StartAR();
+                if (IsIOS()) {
+                    ShowStartARPrompt("Tap to start");
+                }
+                else {
+                    StartAR();
+                }
             }
             initialize();
             var container = document.querySelector("#unity-container");
@@ -153,8 +160,62 @@
                 window.visualViewport.addEventListener("scroll", ScheduleViewportRefresh);
             }
             ScheduleViewportRefresh();
-            function StartAR() {
+            var unityStarted = false;
+            function IsIOS() {
+                return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+            }
+            function ShowStartARPrompt(buttonText) {
+                var startDiv = document.getElementById("startARDiv");
+                var startButton = document.getElementById("startARButton");
+                startDiv.style.display = "flex";
+                startButton.style.display = "block";
+                startButton.innerText = buttonText || "ALLOW ACCESS";
+            }
+            async function UnlockIOSMedia() {
+                if (!IsIOS()) {
+                    return;
+                }
+                try {
+                    var AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContextClass) {
+                        window.__iosAudioContext = window.__iosAudioContext || new AudioContextClass();
+                        if (window.__iosAudioContext.state === "suspended") {
+                            await window.__iosAudioContext.resume();
+                        }
+                        var source = window.__iosAudioContext.createBufferSource();
+                        source.buffer = window.__iosAudioContext.createBuffer(1, 1, 22050);
+                        source.connect(window.__iosAudioContext.destination);
+                        source.start(0);
+                    }
+                }
+                catch (err) {
+                    console.warn("Failed to unlock iOS audio context", err);
+                }
+                try {
+                    var video = document.querySelector("#webcam-video");
+                    if (video) {
+                        video.muted = true;
+                        video.setAttribute("playsinline", "");
+                        video.setAttribute("webkit-playsinline", "");
+                        var playPromise = video.play();
+                        if (playPromise && playPromise.catch) {
+                            await playPromise.catch(() => {});
+                        }
+                        video.pause();
+                    }
+                }
+                catch (err) {
+                    console.warn("Failed to unlock iOS video playback", err);
+                }
+            }
+            async function StartAR() {
+                if (unityStarted) {
+                    return;
+                }
+                unityStarted = true;
                 ScheduleViewportRefresh();
+                await UnlockIOSMedia();
                 
                 document.getElementById("startARDiv").style.display = "none";
                 createUnityInstance(document.querySelector("#unity-canvas"), {
