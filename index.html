@@ -249,7 +249,8 @@
                         return;
                     }
                     var video = document.createElement("video");
-                    video.muted = true;
+                    video.muted = false;
+                    video.volume = 0;
                     video.playsInline = true;
                     video.setAttribute("playsinline", "");
                     video.setAttribute("webkit-playsinline", "");
@@ -296,6 +297,7 @@
                     startButton.disabled = true;
                     startButton.innerText = "Starting... / 正在启动...";
                 }
+                var primeVideosPromise = PrimeTrackedVideosForIOS();
                 var webcamReady = await RequestWebcam();
                 if (!webcamReady) {
                     unityStarted = false;
@@ -305,7 +307,7 @@
                     }
                     return;
                 }
-                await PrimeTrackedVideosForIOS();
+                await primeVideosPromise;
                 await UnlockIOSMedia();
                 
                 document.getElementById("startARDiv").style.display = "none";
