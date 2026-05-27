@@ -361,6 +361,11 @@
                 video.style.position = "";
                 video.style.left = "";
                 video.style.top = "";
+                video.style.width = "100%";
+                video.style.height = "100%";
+                video.style.objectFit = "cover";
+                video.style.transform = "scale(2.5)";
+                video.style.transformOrigin = "center center";
                 video.style.opacity = "";
                 video.style.pointerEvents = "";
                 if (video.src !== new URL(url, document.baseURI).href) {
