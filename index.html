@@ -188,6 +188,12 @@
                 return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
                     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
             }
+            function WithTimeout(promise, timeoutMs) {
+                return Promise.race([
+                    promise,
+                    new Promise((resolve) => setTimeout(resolve, timeoutMs))
+                ]);
+            }
             function ShowStartARPrompt(buttonText) {
                 var startDiv = document.getElementById("startARDiv");
                 var startButton = document.getElementById("startARButton");
@@ -205,7 +211,7 @@
                     if (AudioContextClass) {
                         window.__iosAudioContext = window.__iosAudioContext || new AudioContextClass();
                         if (window.__iosAudioContext.state === "suspended") {
-                            await window.__iosAudioContext.resume();
+                            await WithTimeout(window.__iosAudioContext.resume(), 800);
                         }
                         var source = window.__iosAudioContext.createBufferSource();
                         source.buffer = window.__iosAudioContext.createBuffer(1, 1, 22050);
@@ -224,7 +230,7 @@
                         video.setAttribute("webkit-playsinline", "");
                         var playPromise = video.play();
                         if (playPromise && playPromise.catch) {
-                            await playPromise.catch(() => {});
+                            await WithTimeout(playPromise.catch(() => {}), 800);
                         }
                         video.pause();
                     }
@@ -244,7 +250,6 @@
                     startButton.disabled = true;
                     startButton.innerText = "Starting... / 正在启动...";
                 }
-                await UnlockIOSMedia();
                 var webcamReady = await RequestWebcam();
                 if (!webcamReady) {
                     unityStarted = false;
@@ -254,6 +259,7 @@
                     }
                     return;
                 }
+                await UnlockIOSMedia();
                 
                 document.getElementById("startARDiv").style.display = "none";
                 createUnityInstance(document.querySelector("#unity-canvas"), {
