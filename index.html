@@ -239,6 +239,52 @@
                     console.warn("Failed to unlock iOS video playback", err);
                 }
             }
+            async function PrimeIOSVideo(url) {
+                if (!IsIOS() || !url) {
+                    return;
+                }
+                try {
+                    window.__primedVideos = window.__primedVideos || {};
+                    if (window.__primedVideos[url]) {
+                        return;
+                    }
+                    var video = document.createElement("video");
+                    video.muted = true;
+                    video.playsInline = true;
+                    video.setAttribute("playsinline", "");
+                    video.setAttribute("webkit-playsinline", "");
+                    video.preload = "auto";
+                    video.src = url;
+                    video.style.position = "fixed";
+                    video.style.left = "-2px";
+                    video.style.top = "-2px";
+                    video.style.width = "1px";
+                    video.style.height = "1px";
+                    video.style.opacity = "0";
+                    video.style.pointerEvents = "none";
+                    document.body.appendChild(video);
+                    if (video.load) {
+                        video.load();
+                    }
+                    var playPromise = video.play();
+                    if (playPromise && playPromise.catch) {
+                        await WithTimeout(playPromise.catch(() => {}), 800);
+                    }
+                    video.pause();
+                    try {
+                        video.currentTime = 0;
+                    }
+                    catch (err) {
+                    }
+                    window.__primedVideos[url] = video;
+                }
+                catch (err) {
+                    console.warn("Failed to prime iOS video", err);
+                }
+            }
+            async function PrimeTrackedVideosForIOS() {
+                await PrimeIOSVideo("StreamingAssets/TEDI.mp4");
+            }
             async function StartAR() {
                 if (unityStarted) {
                     return;
@@ -259,6 +305,7 @@
                     }
                     return;
                 }
+                await PrimeTrackedVideosForIOS();
                 await UnlockIOSMedia();
                 
                 document.getElementById("startARDiv").style.display = "none";
