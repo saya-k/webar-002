@@ -82,7 +82,9 @@
         #trackedHtmlVideoOverlay video {
             width: 100%;
             height: 100%;
-            object-fit: contain;
+            object-fit: cover;
+            transform: scale(2.5);
+            transform-origin: center center;
             background: #000;
         }
         #trackedHtmlVideoMessage {
@@ -352,6 +354,7 @@
                 video.setAttribute("webkit-playsinline", "");
                 video.playsInline = true;
                 video.controls = false;
+                video.loop = true;
                 video.muted = false;
                 video.volume = 1;
                 video.preload = "auto";
