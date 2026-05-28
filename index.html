@@ -298,12 +298,13 @@
                         return;
                     }
                     var video = document.createElement("video");
-                    video.muted = false;
-                    video.volume = 0;
+                    video.muted = true;
+                    video.defaultMuted = true;
                     video.playsInline = true;
                     video.setAttribute("playsinline", "");
                     video.setAttribute("webkit-playsinline", "");
                     video.preload = "auto";
+                    video.loop = true;
                     video.src = url;
                     video.style.position = "fixed";
                     video.style.left = "-2px";
@@ -313,23 +314,23 @@
                     video.style.opacity = "0";
                     video.style.pointerEvents = "none";
                     document.body.appendChild(video);
+                    window.__primedVideos[url] = video;
+                    window.__trackedHtmlVideo = video;
                     if (video.load) {
                         video.load();
                     }
                     var playPromise = video.play();
-                    if (playPromise && playPromise.catch) {
-                        await WithTimeout(playPromise.catch(() => {}), 800);
+                    if (playPromise && playPromise.then) {
+                        await WithTimeout(playPromise, 1200);
                     }
-                    video.pause();
                     try {
                         video.currentTime = 0;
                     }
                     catch (err) {
                     }
-                    window.__primedVideos[url] = video;
                 }
                 catch (err) {
-                    console.warn("Failed to prime iOS video", err);
+                    console.warn("Failed to prime iOS video playback", err);
                 }
             }
             async function PrimeTrackedVideosForIOS() {
@@ -389,24 +390,44 @@
             window.PlayTrackedHtmlVideo = function(url) {
                 var state = EnsureTrackedHtmlVideoOverlay(url);
                 var video = state.video;
+                function showTapFallback() {
+                    state.messageText.innerHTML = "Tap to play video<br>点击播放视频";
+                    state.button.style.display = "inline-block";
+                    state.message.style.display = "block";
+                }
+                function markPlaying() {
+                    state.message.style.display = "none";
+                    state.button.style.display = "none";
+                }
+                function playMutedFallback(err) {
+                    console.warn("HTML tracked video play with audio failed; retrying muted", err);
+                    video.muted = true;
+                    video.defaultMuted = true;
+                    var mutedPromise = video.play();
+                    if (mutedPromise && mutedPromise.then) {
+                        mutedPromise.then(markPlaying).catch(function (mutedErr) {
+                            console.warn("HTML tracked muted video play failed", mutedErr);
+                            showTapFallback();
+                        });
+                    }
+                    else {
+                        markPlaying();
+                    }
+                }
                 try {
                     video.currentTime = 0;
                 }
                 catch (err) {
                 }
+                video.defaultMuted = false;
+                video.muted = false;
+                video.volume = 1;
                 var playPromise = video.play();
                 if (playPromise && playPromise.then) {
-                    playPromise.then(function () {
-                        state.message.style.display = "none";
-                    }).catch(function (err) {
-                        console.warn("HTML tracked video play failed", err);
-                        state.messageText.innerHTML = "Tap to play video<br>点击播放视频";
-                        state.button.style.display = "inline-block";
-                        state.message.style.display = "block";
-                    });
+                    playPromise.then(markPlaying).catch(playMutedFallback);
                 }
                 else {
-                    state.message.style.display = "none";
+                    markPlaying();
                 }
             };
             window.StopTrackedHtmlVideo = function() {
